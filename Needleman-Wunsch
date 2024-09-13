@@ -1,0 +1,138 @@
+#function for scoring matrix initialization
+init_mat <- function(seqA, seqB, gap){
+  #getting sequence lengths
+  n <- nchar(seqA)
+  m <- nchar(seqB)
+  
+  #generating a mat of size n+1 X m+1
+  mat <- matrix(0, nrow = n+1, ncol = m+1)
+  
+  #initializing first row
+  for (i in 1:(n+1)) {
+    mat[i,1] <- (i-1) * gap
+  }
+  
+  #initializing first col
+  for (j in 1:(m+1)) {
+    mat[1,j] <- (j-1) * gap
+  }
+  
+  return(mat)
+}
+
+#function to fill in the scoring matrix after alignment
+fill_mat <- function(seqA, seqB, match, mismatch, gap){
+  mat <- init_mat(seqA, seqB, gap) #calling function to initialize matrix
+  n <- nchar(seqA)
+  m <- nchar(seqB)
+  
+  for (i in 2:(n+1)) {
+    for (j in 2:(m+1)) {
+      a <- substr(seqA, i-1, i-1) #accessing character in seq to match
+      b <- substr(seqB, j-1, j-1) #accessing character in seq to match
+      
+      if(a==b){  #incase of match
+        dia <- mat[i-1,j-1] + match
+      } else {   #incase of mismatch
+        dia <- mat[i-1, j-1] + mismatch
+      }
+      
+      #for gaps
+      left <- mat[i, j-1] + gap
+      up <- mat[i-1, j] + gap
+      
+      #assigning the greatest value to current cell
+      mat[i,j] <-max(dia, left, up)
+    }
+  }
+  
+  return(mat)
+}
+
+#function to traceback the matrix and calculate alignment score
+#writing a recursive function first to deal with gaps introduced for optimization
+dynamic_traceback <- function(seqA, seqB, mat, i, j, alignmentA, alignmentB, symbol, score, match, mismatch, gap) {
+  
+  alignment <- list() #this will store all the possible alignments
+  
+  if (i == 1 && j == 1) { #if on top-left cell
+    return(list(list(alignmentA = alignmentA, alignmentB = alignmentB, symbol = symbol, score = sum(as.integer(score)))))
+  }
+  
+  #now checking if diagonal value plus match (for a==b) or mismatch (for else) is equal to current value
+  if (i>1 && j>1 && (mat[i,j] == mat[i-1, j-1] + ifelse(substr(seqA, i-1, i-1) == substr(seqB, j-1, j-1), match, mismatch))) {
+   nalignmentA <- paste0(substr(seqA, i-1, i-1), alignmentA)
+   nalignmentB <- paste0(substr(seqB, j-1, j-1), alignmentB)
+   #pasting x for mismatch and | for match
+   nsymbol <- paste0(ifelse(substr(seqA, i-1, i-1) == substr(seqB, j-1, j-1), "|", "x"), symbol)
+   nscore <- c(score, ifelse(substr(seqA, i-1, i-1) == substr(seqB, j-1, j-1), match, mismatch))
+  
+   alignment <- c(alignment, dynamic_traceback(seqA, seqB, mat, i-1, j-1, nalignmentA, nalignmentB, nsymbol, nscore, match, mismatch, gap))
+   }
+  
+  #now for gaps
+  #checking in seqB
+  
+  if(i > 1 && mat[i,j] == mat[i-1, j] + gap) {
+    nalignmentA <- paste0(substr(seqA, i-1, i-1), alignmentA)
+    nalignmentB <- paste0("-", alignmentB)
+    nsymbol <- paste0("-", symbol)
+    nscore <- c(score, gap)
+    
+    alignment <- c(alignment, dynamic_traceback(seqA, seqB, mat, i-1, j, nalignmentA, nalignmentB, nsymbol, nscore, match, mismatch, gap))
+  }
+  
+  #checking in seqA
+  
+  if (j>1 && mat[i,j] == mat[i, j-1] + gap){
+    nalignmentA <- paste0("-", alignmentA)
+    nalignmentB <- paste0(substr(seqB, j-1, j-1), alignmentB)
+    nsymbol <- paste0("-", symbol)
+    score <- c(score, gap)
+    
+    alignment<- c(alignment, dynamic_traceback(seqA, seqB, mat, i-1, j, nalignmentA, nalignmentB, nsymbol, nscore, match, mismatch, gap))
+  }
+  
+  return(alignment)
+  
+}
+
+traceback <- function(seqA, seqB, match, mismatch, gap) {
+  mat <- fill_mat(seqA, seqB, match, mismatch, gap)
+  n <- nchar(seqA)
+  m <- nchar(seqB)
+  
+  result <- dynamic_traceback(seqA, seqB, mat, n+1, m+1, "", "", "", c(), match, mismatch, gap)
+  
+  return(result)
+}
+
+###### MAIN BODY ######
+
+A1 <- toupper(readline("Paste subject sequence: "))
+B1 <- toupper(readline("Paste query sequence: "))
+m <- as.integer(readline("enter match score: "))
+mm <- as.integer(readline("enter mismatch penalty: "))
+g <- as.integer(readline("enter gap penalty: "))
+
+matrix <- fill_mat(A1, B1, m, mm, g) #calling function to fill scoring matrix
+
+res <- traceback(A1, B1, m, mm, g) #calling function to perform traceback
+
+alignments <- res
+
+for (i in seq_along(alignments)) {
+  alignment <- alignments[[i]]
+  
+  A <- alignment$alignmentA
+  B <- alignment$alignmentB
+  symbol <- alignment$symbol
+  score <- alignment$score
+  
+  cat("\n", "Alignment", i, "\n")
+  cat("score: ", score, "\n")
+  cat(A, "\n")
+  cat(symbol, "\n")
+  cat(B, "\n")
+  cat("============================")
+} 
