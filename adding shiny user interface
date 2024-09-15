@@ -1,0 +1,66 @@
+#giving the needleman-wunsch algorithm implementation an interface using shiny
+#export shiny and shiny theme packages
+library(shiny)
+library(shinythemes)
+
+#defining the ui
+ui <- fluidPage(
+  theme = shinytheme("flatly"), #selecting a theme - find more at https://rstudio.github.io/shinythemes/)
+  titlePanel("Global Sequence Alignment"), #this defines the title that would appear on top of the App
+  
+  sidebarLayout(
+    sidebarPanel( #the panel at the left for user input
+      textInput("query", "Enter Query Sequence: ", ""),
+      textInput("subject", "Enter Subject Sequence", ""),
+      numericInput("match", "Set match score ", 1),
+      numericInput("mismatch", "set mismatch penlty ", -1),
+      numericInput("gap", "set gap penlty ", -2),
+      actionButton("align", "Run Alignment")
+    ),
+    
+    mainPanel( #the panel that would display output
+      uiOutput("alignment_output")
+    )
+  )
+)
+
+#defining a server
+server <- function(input, output){
+#execution when button is pressed
+  observeEvent(input$align, {
+    query_seq <- toupper(input$query)
+    subject_seq <- toupper(input$subject)
+    match <- input$match
+    mismatch <- input$mismatch
+    gap <- input$gap
+
+#function call (see needleman-wunsh implementation)
+    matrix <- fill_mat(query_seq, subject_seq, match, mismatch, gap)
+    res <- traceback(query_seq, subject_seq, match, mismatch, gap)
+    
+    output$alignment_output <- renderUI({
+      if (length(res) == 0) {
+        return(p("No alignments found."))
+      }
+      #a list to store alignments
+      alignment_html <- list ()
+      #loop to access all elements of res 
+      for (i in seq_along(res)){
+        alignment <- res[[i]]
+        
+        alignment_html[[i]] <- tagList(
+          h3(paste("Alignment", i)),
+          p(paste("Score:", alignment$score)),
+          tags$pre(paste(alignment$alignmentA)),
+          tags$pre(paste(alignment$symbol)),
+          tags$pre(paste(alignment$alignmentB)),
+          tags$hr()
+        )
+      }
+      do.call(tagList, alignment_html)
+    })
+  })
+}
+
+#running the app
+shinyApp(ui = ui, server = server)
