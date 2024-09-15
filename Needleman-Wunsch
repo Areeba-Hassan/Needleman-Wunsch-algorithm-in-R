@@ -1,5 +1,5 @@
 #function for scoring matrix initialization
-init_mat <- function(seqA, seqB, gap){
+init_mat <- function(seqA, seqB, gap){ 
   #getting sequence lengths
   n <- nchar(seqA)
   m <- nchar(seqB)
