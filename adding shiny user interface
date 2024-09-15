@@ -1,7 +1,7 @@
 #giving the needleman-wunsch algorithm implementation an interface using shiny
 #export shiny and shiny theme packages
 library(shiny)
-library(shinythemes)
+library(shinythemes) 
 
 #defining the ui
 ui <- fluidPage(
